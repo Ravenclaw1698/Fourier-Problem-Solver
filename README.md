@@ -34,7 +34,7 @@ pip install sympy
 ## Usage
 
 ```bash
-python local.py
+python fourier_solver.py
 ```
 
 You will be presented with a menu:
