@@ -1,223 +1,227 @@
-# ♾ Fourier Series Step-by-Step Solver
+# ♾ Local Fourier Series Solver
 
-A terminal-based Python tool that solves Fourier Series problems with full step-by-step mathematical working — powered by **free AI models via [OpenRouter](https://openrouter.ai)**.
-
-No web browser needed. Just run it in your terminal, enter a function, and get a detailed solution printed right there.
-
----
-
-## What it does
-
-- Accepts any mathematical function as input (e.g. `x^2`, `pi - x`, `|x|`, `cos(x)`, piecewise functions)
-- Supports all major Fourier series types
-- Shows every step: identifying parameters, computing a₀, aₙ, bₙ, integration by parts, and the final series
-- Comes with 7 built-in presets from a real MAT216 worksheet
-- Automatically falls back to another free model if one is rate-limited
-- Loops so you can solve multiple problems in one session
-- Color-coded terminal output for easy reading
+A fully **offline**, **step-by-step** Fourier series calculator powered by [SymPy](https://www.sympy.org/).  
+No API. No internet. No subscription. Everything runs locally on your machine.
 
 ---
 
-## Supported series types
+## Features
 
-| Type | Description |
-|------|-------------|
-| General Fourier Series | For any function on (−L, L) |
-| Even Function — Cosine Series | When f(x) is even on (−L, L) |
-| Odd Function — Sine Series | When f(x) is odd on (−L, L) |
-| Half-Range Cosine Series | For f(x) defined on (0, L) |
-| Half-Range Sine Series | For f(x) defined on (0, L) |
+- **Parity detection first** — checks if your function is even or odd *before* computing, then applies the correct simplified formulas automatically
+- **Full step-by-step working** — shows the integrand, the raw integral result, and the simplified coefficient at every stage
+- **All standard problem types** supported (see below)
+- **Piecewise function input** — define functions like `f(x) = { -x, x<0 ; x, x≥0 }` interactively
+- **Series identity verification** — substitute a specific `x` value to prove identities like `1 - 1/4 + 1/9 - … = π²/12`
+- Pure Python — only requires `sympy`
 
 ---
 
 ## Requirements
 
-- Python 3.7 or higher
-- A **free** OpenRouter API key → get one at [openrouter.ai/keys](https://openrouter.ai/keys) (sign up with Google or GitHub)
+```
+Python 3.8+
+sympy
+```
 
----
-
-## Installation
-
-**1. Clone the repository**
+Install SymPy if you don't have it:
 
 ```bash
-git clone https://github.com/Ravenclaw1698/Fourier-Problem-Solver.git
-cd Fourier-Problem-Solver
+pip install sympy
 ```
-
-**2. Install the dependency**
-
-```bash
-pip install openai
-```
-
-> The script will also auto-install `openai` on first run if it's missing.
-
-**3. (Optional) Set your API key as an environment variable**
-
-On Linux / macOS:
-```bash
-export OPENROUTER_API_KEY="sk-or-v1-your-key-here"
-```
-
-On Windows (Command Prompt):
-```cmd
-set OPENROUTER_API_KEY=sk-or-v1-your-key-here
-```
-
-On Windows (PowerShell):
-```powershell
-$env:OPENROUTER_API_KEY="sk-or-v1-your-key-here"
-```
-
-> If you skip this step, the script will ask you to paste the key when it starts.
 
 ---
 
 ## Usage
 
 ```bash
-python fourier_solver.py
+python local.py
 ```
 
-You will see a menu like this:
+You will be presented with a menu:
 
 ```
-════════════════════════════════════════════════════════════════
-   ♾  Fourier Series Step-by-Step Solver
-   Powered by OpenRouter (Free Models)
-════════════════════════════════════════════════════════════════
-
-Enter OpenRouter API key: <paste your key>
-
-Quick presets:
-   1. π − x  on (−π, π)
-   2. |x|    on (−π, π)
-   3. x²     on (−π, π)
-   4. x²     on (−3, 3)
-   5. x      on (−1, 5), period 6
-   6. cos x  (half-range sine)
-   7. x      on (0, 2) (half cosine)
-   0. Enter manually
-
-Select preset (0 to type manually):
-```
-
-### Option A — Use a preset
-
-Pick a number from `1` to `7` to instantly solve a standard example.
-
-### Option B — Enter manually
-
-Pick `0` and provide:
-- The function, e.g. `pi - x` or `x^2` or `|x|`
-- The interval, e.g. `-pi to pi` or `0 to 3`
-- The series type (pick from numbered menu)
-- Optional extra context (e.g. for piecewise functions)
-
----
-
-## Example output
-
-```
-════════════════════════════════════════════════════════════════
-  Solution
-════════════════════════════════════════════════════════════════
-
-  Step 1: Identify parameters
-──────────────────────────────────────────────────────────────
-  The function f(x) = π − x is defined on (−π, π),
-  so L = π and the period is 2π.
-
-    L = π,   interval = (−π, π),   period = 2π
-
-  Step 2: State the Fourier formula
-──────────────────────────────────────────────────────────────
-  Since no special symmetry applies, we use the general formula.
-
-    f(x) = a₀/2 + Σ [aₙ cos(nπx/L) + bₙ sin(nπx/L)]
-
-  Step 3: Compute a₀
-──────────────────────────────────────────────────────────────
-  Integrate f(x) over one full period and divide by L.
-
-    a₀ = (1/π) ∫[-π to π] (π − x) dx
-       = (1/π) [πx − x²/2] from −π to π
-       = (1/π) [(π² − π²/2) − (−π² + π²/2)]
-       = (1/π) · π² = π
-
-  ...
-
-  Step 7: Final Fourier Series
-──────────────────────────────────────────────────────────────
-  Substituting all computed coefficients:
-
-    f(x) = π/2 + 2 Σ (1/n) sin(nx),   n = 1, 2, 3, ...
+═══════════════════════════════════════════════════════════════════
+  MAIN MENU
+───────────────────────────────────────────────────────────────────
+  [1]  Find the period of a function  (Problem 1 type)
+  [2]  Full Fourier series  [-π,π] or custom interval/period
+  [3]  Half-range cosine series  on [0, L]
+  [4]  Half-range sine series    on [0, L]
+  [5]  Series sum / identity verification  (Parseval, substitution)
+  [6]  Function sketch & analysis
+  [q]  Quit
+═══════════════════════════════════════════════════════════════════
 ```
 
 ---
 
-## Input format tips
+## Menu Options
 
-| What you want | How to type it |
-|---------------|----------------|
-| π | `pi` |
-| x² | `x^2` |
-| \|x\| | `|x|` |
-| sin(x), cos(x) | `sin(x)`, `cos(x)` |
-| eˣ | `e^x` |
-| Piecewise function | Use the "extra context" field, e.g. `f(x) = -x for x < 0, x for x >= 0` |
-| Interval −π to π | `-pi to pi` |
-| Interval 0 to 2π | `0 to 2pi` |
+### [1] Period Finder
+Finds the fundamental period of functions built from `sin`, `cos`, or `tan`.
 
----
+**Rules applied:**
+| Function form | Period |
+|---|---|
+| `sin(Bx + C)`, `cos(Bx + C)` | `2π / │B│` |
+| `tan(Bx + C)` | `π / │B│` |
+| Sum / product of trig terms | LCM of individual periods |
 
-## How it works
-
-1. You pick a preset or enter a function, interval, and series type
-2. The script builds a structured prompt describing the problem
-3. It sends the prompt to a **free AI model** via the OpenRouter API
-4. The model returns a JSON array of steps (title, explanation, math working)
-5. The script parses and renders each step with color formatting in your terminal
-
-The tool does **not** compute integrals locally — the AI model performs all mathematical reasoning and returns fully worked solutions.
-
-### Free models used (in priority order)
-
-If one model is rate-limited, the script automatically tries the next:
-
-1. `google/gemma-3-27b-it:free`
-2. `nousresearch/hermes-3-llama-3.1-405b:free`
-3. `meta-llama/llama-3.3-70b-instruct:free`
-4. `nvidia/nemotron-3-super-120b-a12b:free`
-5. `meta-llama/llama-3.2-3b-instruct:free`
+**Example input:**
+```
+f(x) = 1952*cos(2025*x + 2026)**1971
+```
+**Output:** `T = 2π/2025`
 
 ---
 
-## File structure
+### [2] Full Fourier Series
+Expands `f(x)` as a full Fourier series with cosine **and** sine terms.
+
+**Interval options:**
+- Standard `[-π, π]` (period `2π`)
+- Custom interval `[a, b]`
+- Custom period `T` (interval becomes `[-T/2, T/2]`)
+
+**Parity shortcuts applied automatically:**
+
+| Parity | What gets skipped | Formula used |
+|---|---|---|
+| **Even** `f(-x) = f(x)` | All `bₙ = 0` (no sine integration) | `a₀, aₙ` via `(2/L)∫₀ᴸ` |
+| **Odd** `f(-x) = -f(x)` | `a₀ = 0`, all `aₙ = 0` (no cosine integration) | `bₙ` via `(2/L)∫₀ᴸ` |
+| **Neither** | Nothing skipped | Full `(1/L)∫₋ₗᴸ` for all three |
+
+**Steps shown for each coefficient:**
+1. The formula being applied
+2. The integrand written out
+3. The raw integral result (before the `1/L` or `2/L` factor)
+4. The final simplified coefficient
+
+**Example — `f(x) = x²` on `[-π, π]`:**
+```
+PARITY CHECK
+  f(-x) = f(x)  →  f(x) is EVEN
+  ✓  bₙ = 0 for all n  (no integration needed)
+  ✓  a₀ = (2/L) ∫₀ᴸ f(x) dx
+  ✓  aₙ = (2/L) ∫₀ᴸ f(x)·cos(nπx/L) dx
+
+STEP 1 — Compute a₀
+  a₀ = 2π²/3
+
+STEP 2 — Compute aₙ
+  aₙ = 4·(-1)ⁿ / n²
+
+STEP 3 — bₙ
+  f(x) is EVEN → bₙ = 0 ✓ (no integration needed)
+
+RESULT
+  f(x) ≈ π²/3 - 4cos(x) + cos(2x) - 4cos(3x)/9 + …
+```
+
+---
+
+### [3] Half-Range Cosine Series
+Expands `f(x)` defined on `[0, L]` using only cosine terms (even extension to `[-L, L]`).
+
+**Formulas:**
+```
+a₀ = (2/L) ∫₀ᴸ f(x) dx
+aₙ = (2/L) ∫₀ᴸ f(x)·cos(nπx/L) dx
+bₙ = 0  (by construction)
+```
+
+---
+
+### [4] Half-Range Sine Series
+Expands `f(x)` defined on `[0, L]` using only sine terms (odd extension to `[-L, L]`).
+
+**Formulas:**
+```
+a₀ = 0,  aₙ = 0  (by construction)
+bₙ = (2/L) ∫₀ᴸ f(x)·sin(nπx/L) dx
+```
+
+**Example — `f(x) = cos(x)` on `[0, π]` as a sine series (Problem 19 type):**
+```
+b₂ = 8/(3π),   b₄ = 16/(15π),  …
+f(x) ≈ 8sin(2x)/(3π) + 16sin(4x)/(15π) + …
+```
+
+---
+
+### [5] Series Sum Verification
+Computes the Fourier series and then:
+- **Substitution**: set `x = x₀` to derive famous identities
+- **Parseval's theorem**: equate `‖f‖²` with `a₀²/2 + Σ(aₙ² + bₙ²)`
+
+**Example — prove `1 - 1/4 + 1/9 - … = π²/12`:**
+```
+f(x) = x/pi  on [-π, π],  substitute x = π
+→  f(π) = 1  =  1 - 1/4 + 1/9 - 1/16 + …
+```
+
+---
+
+### [6] Function Sketch & Analysis
+For a given `f(x)` on `[a, b]`:
+- Computes `f'(x)` and finds critical points
+- Evaluates key values (`f(a)`, `f(0)`, `f(b)`)
+- Detects parity (even / odd / neither)
+- Prints the exact `sympy.plot(...)` command to generate a graph
+
+---
+
+## Piecewise Functions
+
+Any menu option that accepts `f(x)` also accepts piecewise definitions.  
+Select option `[2] Piecewise function` when prompted, then enter each piece as:
 
 ```
-Fourier-Problem-Solver/
-├── fourier_solver.py   # Main script
-└── README.md           # This file
+expression | condition
 ```
 
----
+**Example — `f(x) = { -x, -π < x < 0 ; x, 0 ≤ x ≤ π }` (i.e. `|x|`):**
+```
+Piece 1: -x | (x >= -pi) & (x < 0)
+Piece 2:  x | (x >= 0) & (x <= pi)
+```
 
-## Course context
-
-This tool was built as a study aid for **MAT216: Linear Algebra and Fourier Analysis** at BRAC University. The presets are taken directly from the MAT216 homework sheet on Fourier Series, Even/Odd functions, and Half-Range Series.
-
----
-
-## License
-
-MIT License — free to use, modify, and distribute.
+Use `&` for AND. Use `pi` for π, `e` for *e*, `Abs(x)` for |x|.
 
 ---
 
-## Acknowledgements
+## Function Input Syntax
 
-- [OpenRouter](https://openrouter.ai) for providing access to free AI models
-- MAT216 course material, Department of Mathematics and Natural Sciences, BRAC University
+| Math | Type this |
+|---|---|
+| `x²` | `x**2` |
+| `\|x\|` | `Abs(x)` |
+| `eˣ` | `exp(x)` |
+| `π` | `pi` |
+| `sin²(x)` | `sin(x)**2` |
+| `x(π − x)` | `x*(pi - x)` |
+| `A − 4x/P` | `A - 4*x/P` *(use symbolic constants freely)* |
+
+---
+
+## Homework Problem Coverage
+
+| Problem type | Menu option |
+|---|---|
+| Period of `cos¹⁹⁷¹(2025x+2026)` etc. | **[1]** |
+| Fourier series on `[-π, π]` | **[2]** → option 1 |
+| Fourier series on `[0, 2π]` | **[2]** → option 2, set `a=0, b=2*pi` |
+| Fourier series with period 6 or 8 | **[2]** → option 3, enter `T=6` or `T=8` |
+| Piecewise `f(x)` on any interval | **[2]** + piecewise input |
+| Half-range cosine (even extension) | **[3]** |
+| Half-range sine (odd extension) | **[4]** |
+| Prove `1 − 1/4 + 1/9 − … = π²/12` | **[5]** |
+| Sketch / analyse a function | **[6]** |
+
+---
+
+## Notes
+
+- Computations can take a few seconds for complex functions — SymPy performs exact symbolic integration.
+- If SymPy cannot evaluate an integral in closed form it will return an unevaluated `Integral(...)` object.
+- For graphical plots, install `matplotlib` (`pip install matplotlib`) and use the command printed by option [6].
