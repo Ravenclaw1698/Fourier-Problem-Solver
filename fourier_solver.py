@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Fourier Series Step-by-Step Solver
-Uses the Anthropic API to generate detailed solutions in the terminal.
+Now uses OpenRouter FREE API instead of Anthropic
 """
 
 import os
@@ -9,14 +9,14 @@ import json
 import sys
 
 try:
-    import anthropic
+    from openai import OpenAI
 except ImportError:
-    print("Installing anthropic library...")
-    os.system(f"{sys.executable} -m pip install anthropic -q")
-    import anthropic
+    print("Installing openai library...")
+    os.system(f"{sys.executable} -m pip install openai -q")
+    from openai import OpenAI
 
 
-# ── ANSI colors ────────────────────────────────────────────────────────────────
+# ── ANSI colors ─────────────────────────────────────────
 class C:
     RESET  = "\033[0m"
     BOLD   = "\033[1m"
@@ -29,6 +29,15 @@ class C:
     MAGENTA= "\033[95m"
     WHITE  = "\033[97m"
 
+
+# Free models to try in order — if one is rate-limited, the next is used
+FREE_MODELS = [
+    "google/gemma-3-27b-it:free",
+    "nousresearch/hermes-3-llama-3.1-405b:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+]
 
 SERIES_TYPES = {
     "1": ("general",      "General Fourier Series"),
@@ -46,10 +55,6 @@ PRESETS = [
     ("x      on (−1, 5), period 6",  "x",         "-1 to 5",    "general",     "period 6"),
     ("cos x  (half-range sine)",     "cos(x)",    "0 to pi",    "half-sine",   ""),
     ("x      on (0, 2) (half cosine)","x",         "0 to 2",     "half-cosine", ""),
-    ("piecewise ±2  on (0, 2π)",     "piecewise", "0 to 2pi",   "general",
-        "piecewise: f(x) = -2 for 0 <= x < pi, f(x) = 2 for pi <= x < 2pi"),
-    ("x(π−x) on (0, π) — sine",     "x*(pi-x)",  "0 to pi",    "half-sine",   "use result to show π³/32"),
-    ("3 sin x (half-range cosine)",  "3*sin(x)",  "0 to pi",    "half-cosine", ""),
 ]
 
 
@@ -65,7 +70,7 @@ def banner():
     print()
     print(f"{C.CYAN}{C.BOLD}{'═' * 64}{C.RESET}")
     print(f"{C.CYAN}{C.BOLD}   ♾  Fourier Series Step-by-Step Solver{C.RESET}")
-    print(f"{C.DIM}   Powered by Claude (Anthropic API){C.RESET}")
+    print(f"{C.DIM}   Powered by OpenRouter (Free Models){C.RESET}")
     print(f"{C.CYAN}{C.BOLD}{'═' * 64}{C.RESET}")
     print()
 
@@ -100,48 +105,47 @@ def show_presets():
 def get_input():
     print(f"\n{C.BOLD}Manual input:{C.RESET}")
     func = input(f"  {C.CYAN}f(x) ={C.RESET} ").strip()
-    if not func:
-        print(f"{C.RED}  Function cannot be empty.{C.RESET}")
-        return None
-    interval = input(f"  {C.CYAN}Interval (e.g. -pi to pi):{C.RESET} ").strip()
-    if not interval:
-        print(f"{C.RED}  Interval cannot be empty.{C.RESET}")
-        return None
+    interval = input(f"  {C.CYAN}Interval:{C.RESET} ").strip()
     stype, type_label = choose_series_type()
-    ctx = input(f"  {C.CYAN}Extra context (optional, press Enter to skip):{C.RESET} ").strip()
+    ctx = input(f"  {C.CYAN}Extra context:{C.RESET} ").strip()
     return func, interval, stype, type_label, ctx
 
 
 def build_prompt(func, interval, type_label, ctx):
-    system = """You are an expert mathematics tutor specializing in Fourier Series.
-Solve Fourier Series problems with complete, detailed step-by-step working.
+    extra = f"Additional context: {ctx}" if ctx else ""
+    return f"""You are a mathematics tutor. Solve this Fourier Series problem with FULL working, showing every calculation in detail.
 
-Return your solution ONLY as a valid JSON array. No markdown, no extra text.
-Each element is a step object with these keys:
-  "title"       : short step heading (e.g. "Identify parameters", "Compute a₀")
-  "explanation" : 1-3 sentence explanation of what you're doing and why
-  "math"        : the mathematical working, using Unicode symbols (π ∫ Σ ∞ ² ³ √ ± ≠ ≤ ≥).
-                  Write integrals as ∫[a to b] f(x) dx.
-                  Separate equations with newlines.
-                  Leave empty string "" if no math for this step.
+Problem:
+  f(x) = {func}
+  Interval: {interval}
+  Series type: {type_label}
+  {extra}
 
-Always include (where applicable):
-1. Identify type, L value, period
-2. State the Fourier formula being used
-3. Check even/odd symmetry
-4. Compute a₀ with full integration
-5. Compute aₙ with full integration (include integration by parts if needed)
-6. Compute bₙ with full integration
-7. Write the complete final Fourier series
-8. Any special deductions (π²/6, π³/32, etc.)
+You MUST include ALL of the following steps (each as a separate object):
+  1. Identify the function and interval; state L and the period T = 2L
+  2. Write the general Fourier Series formula for this type
+  3. Compute a0: write the integral, evaluate it fully showing every integration step
+  4. Compute an: write the integral, apply integration by parts or standard technique, simplify fully
+  5. Compute bn: write the integral, evaluate fully (if applicable for the series type)
+  6. Simplify coefficients — substitute n values, identify patterns (even/odd n), cancel terms
+  7. Write the final Fourier Series with the computed coefficients substituted in
 
-Be thorough. Show every integral evaluation step."""
+Rules:
+- For each step, show the FULL integral setup AND evaluation — do not skip algebra
+- Use plain ASCII math (no LaTeX backslashes): use sin(nx), cos(nx), pi, integral notation like int_a^b
+- DO NOT return fewer than 6 steps
+- Return ONLY a valid JSON array. No markdown, no code fences, no text outside the array.
 
-    user = (
-        f"Find the {type_label} for f(x) = {func} on the interval {interval}."
-        + (f"\nAdditional info: {ctx}" if ctx else "")
-    )
-    return system, user
+Each element must be an object with EXACTLY these keys:
+  "title"       : step name (string)
+  "explanation" : full working for this step — every line of algebra (string, at least 3 sentences)
+  "math"        : the key formula or final result of this step (string)
+
+JSON array format (start immediately with '[', end with ']'):
+[
+  {{"title": "Step name", "explanation": "Full detailed working...", "math": "formula"}},
+  ...
+]"""
 
 
 def render_solution(steps):
@@ -151,76 +155,61 @@ def render_solution(steps):
     hr("═", C.CYAN)
 
     for i, step in enumerate(steps, 1):
-        print()
-        # Step header
-        print(f"{C.BLUE}{C.BOLD}  Step {i}: {step.get('title', '')}{C.RESET}")
+        print(f"\n{C.BLUE}{C.BOLD}  Step {i}: {step.get('title','')}{C.RESET}")
         hr("─", C.DIM)
-
-        # Explanation
-        explanation = step.get("explanation", "").strip()
-        if explanation:
-            for line in explanation.splitlines():
-                print(f"  {C.WHITE}{line}{C.RESET}")
-
-        # Math block
-        math = step.get("math", "").strip()
-        if math:
-            print()
-            for line in math.splitlines():
-                print(f"  {C.YELLOW}  {line}{C.RESET}")
-
-    print()
-    hr("═", C.CYAN)
-    print(f"{C.GREEN}{C.BOLD}  ✓ Solution complete{C.RESET}")
-    hr("═", C.CYAN)
-    print()
+        print(step.get("explanation", ""))
+        if step.get("math"):
+            print(f"\n{C.YELLOW}{step['math']}{C.RESET}")
 
 
 def solve(client, func, interval, type_label, ctx):
-    system, user = build_prompt(func, interval, type_label, ctx)
+    prompt = build_prompt(func, interval, type_label, ctx)
 
-    print(f"\n{C.DIM}  Solving ", end="", flush=True)
-    spinner = ["|", "/", "─", "\\"]
-    import threading, time
+    raw = None
+    for model in FREE_MODELS:
+        print(f"\n{C.DIM}  Trying {model} ...{C.RESET}")
+        try:
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2
+            )
+            raw = completion.choices[0].message.content
+            print(f"{C.GREEN}  ✓ Using {model}{C.RESET}")
+            break  # success — stop trying
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "rate" in err.lower():
+                print(f"{C.YELLOW}  Rate-limited, trying next model...{C.RESET}")
+            else:
+                print(f"{C.RED}  API Error: {e}{C.RESET}")
+                return
 
-    stop_spin = threading.Event()
+    if raw is None:
+        print(f"{C.RED}  All models are rate-limited. Please wait a minute and try again.{C.RESET}")
+        return
 
-    def spin():
-        i = 0
-        while not stop_spin.is_set():
-            print(f"\r{C.DIM}  Generating solution {spinner[i % 4]}{C.RESET}", end="", flush=True)
-            i += 1
-            time.sleep(0.12)
-
-    t = threading.Thread(target=spin, daemon=True)
-    t.start()
-
-    try:
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4000,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        )
-        raw = "".join(b.text for b in response.content if hasattr(b, "text"))
-    finally:
-        stop_spin.set()
-        t.join()
-        clear_line()
-
-    # Parse JSON
     clean = raw.strip()
+
+    # Strip markdown code fences if model wrapped response in ```json ... ```
     if clean.startswith("```"):
-        clean = clean.split("```")[1]
-        if clean.startswith("json"):
-            clean = clean[4:]
-    clean = clean.strip()
+        lines = clean.splitlines()
+        clean = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+        clean = clean.strip()
+
+    # If there's preamble text, find the JSON array
+    start = clean.find("[")
+    end   = clean.rfind("]")
+    if start != -1 and end != -1 and end > start:
+        clean = clean[start:end+1]
 
     try:
         steps = json.loads(clean)
-    except json.JSONDecodeError as e:
-        print(f"{C.RED}  Failed to parse response: {e}{C.RESET}")
-        print(f"{C.DIM}  Raw output:\n{raw[:500]}{C.RESET}")
+        if not isinstance(steps, list) or len(steps) == 0:
+            raise ValueError("Empty or non-list JSON")
+    except Exception as ex:
+        print(f"{C.YELLOW}  JSON parse failed ({ex}). Raw output:{C.RESET}")
+        print(raw[:1200])
         return
 
     render_solution(steps)
@@ -229,57 +218,25 @@ def solve(client, func, interval, type_label, ctx):
 def main():
     banner()
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not api_key:
-        print(f"{C.YELLOW}  No ANTHROPIC_API_KEY found in environment.{C.RESET}")
-        api_key = input(f"  {C.BOLD}Enter your Anthropic API key: {C.RESET}").strip()
-        if not api_key:
-            print(f"{C.RED}  API key required. Exiting.{C.RESET}")
-            sys.exit(1)
+        api_key = input("Enter OpenRouter API key: ").strip()
 
-    client = anthropic.Anthropic(api_key=api_key)
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key
+    )
 
     while True:
-        print(f"\n{C.BOLD}{'─' * 64}{C.RESET}")
-        print(f"{C.BOLD}New problem{C.RESET}  (or type {C.YELLOW}exit{C.RESET} to quit)")
-        print(f"{'─' * 64}")
-
-        use_preset = input(f"\n{C.BOLD}Use a preset example? [y/n]: {C.RESET}").strip().lower()
-        if use_preset in ("exit", "quit", "q"):
-            break
-
-        if use_preset == "y":
-            result = show_presets()
-            if result is None:
-                result = get_input()
-        else:
-            result = get_input()
-
+        result = show_presets()
         if result is None:
-            continue
-
+            result = get_input()
         func, interval, stype, type_label, ctx = result
 
-        print(f"\n  {C.DIM}f(x) = {C.RESET}{C.WHITE}{C.BOLD}{func}{C.RESET}")
-        print(f"  {C.DIM}Interval: {C.RESET}{C.WHITE}{interval}{C.RESET}")
-        print(f"  {C.DIM}Type:     {C.RESET}{C.WHITE}{type_label}{C.RESET}")
-        if ctx:
-            print(f"  {C.DIM}Context:  {C.RESET}{C.WHITE}{ctx}{C.RESET}")
+        solve(client, func, interval, type_label, ctx)
 
-        try:
-            solve(client, func, interval, type_label, ctx)
-        except anthropic.AuthenticationError:
-            print(f"{C.RED}  Authentication failed. Check your API key.{C.RESET}")
-        except anthropic.APIConnectionError:
-            print(f"{C.RED}  Connection error. Check your internet connection.{C.RESET}")
-        except Exception as e:
-            print(f"{C.RED}  Error: {e}{C.RESET}")
-
-        again = input(f"\n{C.BOLD}Solve another problem? [y/n]: {C.RESET}").strip().lower()
-        if again != "y":
+        if input("\nAgain? (y/n): ").lower() != "y":
             break
-
-    print(f"\n{C.CYAN}  Goodbye!{C.RESET}\n")
 
 
 if __name__ == "__main__":
