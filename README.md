@@ -1,6 +1,6 @@
 # ♾ Fourier Series Step-by-Step Solver
 
-A terminal-based Python tool that solves Fourier Series problems with full step-by-step mathematical working — powered by the Claude AI API (Anthropic).
+A terminal-based Python tool that solves Fourier Series problems with full step-by-step mathematical working — powered by **free AI models via [OpenRouter](https://openrouter.ai)**.
 
 No web browser needed. Just run it in your terminal, enter a function, and get a detailed solution printed right there.
 
@@ -11,7 +11,8 @@ No web browser needed. Just run it in your terminal, enter a function, and get a
 - Accepts any mathematical function as input (e.g. `x^2`, `pi - x`, `|x|`, `cos(x)`, piecewise functions)
 - Supports all major Fourier series types
 - Shows every step: identifying parameters, computing a₀, aₙ, bₙ, integration by parts, and the final series
-- Comes with 10 built-in presets from a real MAT216 worksheet
+- Comes with 7 built-in presets from a real MAT216 worksheet
+- Automatically falls back to another free model if one is rate-limited
 - Loops so you can solve multiple problems in one session
 - Color-coded terminal output for easy reading
 
@@ -32,7 +33,7 @@ No web browser needed. Just run it in your terminal, enter a function, and get a
 ## Requirements
 
 - Python 3.7 or higher
-- An Anthropic API key → get one free at [console.anthropic.com](https://console.anthropic.com)
+- A **free** OpenRouter API key → get one at [openrouter.ai/keys](https://openrouter.ai/keys) (sign up with Google or GitHub)
 
 ---
 
@@ -41,31 +42,33 @@ No web browser needed. Just run it in your terminal, enter a function, and get a
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/your-username/fourier-series-solver.git
-cd fourier-series-solver
+git clone https://github.com/Ravenclaw1698/Fourier-Problem-Solver.git
+cd Fourier-Problem-Solver
 ```
 
 **2. Install the dependency**
 
 ```bash
-pip install anthropic
+pip install openai
 ```
 
-**3. Set your API key**
+> The script will also auto-install `openai` on first run if it's missing.
+
+**3. (Optional) Set your API key as an environment variable**
 
 On Linux / macOS:
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-your-key-here"
+export OPENROUTER_API_KEY="sk-or-v1-your-key-here"
 ```
 
 On Windows (Command Prompt):
 ```cmd
-set ANTHROPIC_API_KEY=sk-ant-your-key-here
+set OPENROUTER_API_KEY=sk-or-v1-your-key-here
 ```
 
 On Windows (PowerShell):
 ```powershell
-$env:ANTHROPIC_API_KEY="sk-ant-your-key-here"
+$env:OPENROUTER_API_KEY="sk-or-v1-your-key-here"
 ```
 
 > If you skip this step, the script will ask you to paste the key when it starts.
@@ -83,37 +86,35 @@ You will see a menu like this:
 ```
 ════════════════════════════════════════════════════════════════
    ♾  Fourier Series Step-by-Step Solver
-   Powered by Claude (Anthropic API)
+   Powered by OpenRouter (Free Models)
 ════════════════════════════════════════════════════════════════
 
-Use a preset example? [y/n]:
+Enter OpenRouter API key: <paste your key>
+
+Quick presets:
+   1. π − x  on (−π, π)
+   2. |x|    on (−π, π)
+   3. x²     on (−π, π)
+   4. x²     on (−3, 3)
+   5. x      on (−1, 5), period 6
+   6. cos x  (half-range sine)
+   7. x      on (0, 2) (half cosine)
+   0. Enter manually
+
+Select preset (0 to type manually):
 ```
 
 ### Option A — Use a preset
 
-Type `y` and pick from the built-in examples:
-
-```
- 1.  π − x  on (−π, π)
- 2.  |x|    on (−π, π)
- 3.  x²     on (−π, π)
- 4.  x²     on (−3, 3)
- 5.  x      on (−1, 5), period 6
- 6.  cos x  (half-range sine)
- 7.  x      on (0, 2)  (half-range cosine)
- 8.  piecewise ±2  on (0, 2π)
- 9.  x(π−x) on (0, π) — sine series
-10.  3 sin x (half-range cosine)
- 0.  Enter manually
-```
+Pick a number from `1` to `7` to instantly solve a standard example.
 
 ### Option B — Enter manually
 
-Type `n` and provide:
+Pick `0` and provide:
 - The function, e.g. `pi - x` or `x^2` or `|x|`
 - The interval, e.g. `-pi to pi` or `0 to 3`
 - The series type (pick from numbered menu)
-- Optional extra context for piecewise functions
+- Optional extra context (e.g. for piecewise functions)
 
 ---
 
@@ -153,10 +154,6 @@ Type `n` and provide:
   Substituting all computed coefficients:
 
     f(x) = π/2 + 2 Σ (1/n) sin(nx),   n = 1, 2, 3, ...
-
-════════════════════════════════════════════════════════════════
-  ✓ Solution complete
-════════════════════════════════════════════════════════════════
 ```
 
 ---
@@ -167,7 +164,7 @@ Type `n` and provide:
 |---------------|----------------|
 | π | `pi` |
 | x² | `x^2` |
-| \|x\| | `\|x\|` |
+| \|x\| | `|x|` |
 | sin(x), cos(x) | `sin(x)`, `cos(x)` |
 | eˣ | `e^x` |
 | Piecewise function | Use the "extra context" field, e.g. `f(x) = -x for x < 0, x for x >= 0` |
@@ -178,20 +175,30 @@ Type `n` and provide:
 
 ## How it works
 
-1. You enter a function, interval, and series type
+1. You pick a preset or enter a function, interval, and series type
 2. The script builds a structured prompt describing the problem
-3. It sends the prompt to the **Claude claude-sonnet-4-20250514** model via the Anthropic API
-4. Claude returns a JSON array of steps (title, explanation, math working)
+3. It sends the prompt to a **free AI model** via the OpenRouter API
+4. The model returns a JSON array of steps (title, explanation, math working)
 5. The script parses and renders each step with color formatting in your terminal
 
-The tool does **not** compute integrals locally — Claude performs all the mathematical reasoning and returns fully worked solutions.
+The tool does **not** compute integrals locally — the AI model performs all mathematical reasoning and returns fully worked solutions.
+
+### Free models used (in priority order)
+
+If one model is rate-limited, the script automatically tries the next:
+
+1. `google/gemma-3-27b-it:free`
+2. `nousresearch/hermes-3-llama-3.1-405b:free`
+3. `meta-llama/llama-3.3-70b-instruct:free`
+4. `nvidia/nemotron-3-super-120b-a12b:free`
+5. `meta-llama/llama-3.2-3b-instruct:free`
 
 ---
 
 ## File structure
 
 ```
-fourier-series-solver/
+Fourier-Problem-Solver/
 ├── fourier_solver.py   # Main script
 └── README.md           # This file
 ```
@@ -212,5 +219,5 @@ MIT License — free to use, modify, and distribute.
 
 ## Acknowledgements
 
-- [Anthropic](https://www.anthropic.com) for the Claude API
+- [OpenRouter](https://openrouter.ai) for providing access to free AI models
 - MAT216 course material, Department of Mathematics and Natural Sciences, BRAC University
